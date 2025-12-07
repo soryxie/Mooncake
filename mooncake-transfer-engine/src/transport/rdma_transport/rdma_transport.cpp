@@ -496,7 +496,9 @@ int RdmaTransport::onSetupRdmaConnections(const HandShakeDesc &peer_desc,
 int RdmaTransport::initializeRdmaResources() {
     auto hca_list = local_topology_->getHcaList();
     for (auto &device_name : hca_list) {
-        auto context = std::make_shared<RdmaContext>(*this, device_name);
+        const int device_index = static_cast<int>(context_list_.size());
+        auto context =
+            std::make_shared<RdmaContext>(*this, device_name, device_index);
         auto &config = globalConfig();
         int ret = context->construct(config.num_cq_per_ctx,
                                      config.num_comp_channels_per_ctx,

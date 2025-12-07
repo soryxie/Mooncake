@@ -63,7 +63,8 @@ struct MemoryRegionMeta {
 // including Memory Region, CQ, EndPoint (QPs), etc.
 class RdmaContext {
    public:
-    RdmaContext(RdmaTransport &engine, const std::string &device_name);
+    RdmaContext(RdmaTransport &engine, const std::string &device_name,
+                int device_index = -1);
 
     ~RdmaContext();
 
@@ -109,6 +110,8 @@ class RdmaContext {
    public:
     // Device name, such as `mlx5_3`
     std::string deviceName() const { return device_name_; }
+
+    int deviceIndex() const { return device_index_; }
 
     // NIC Path, such as `192.168.3.76@mlx5_3`
     std::string nicPath() const;
@@ -166,6 +169,7 @@ class RdmaContext {
 
    private:
     const std::string device_name_;
+    int device_index_;
     RdmaTransport &engine_;
 
     ibv_context *context_ = nullptr;

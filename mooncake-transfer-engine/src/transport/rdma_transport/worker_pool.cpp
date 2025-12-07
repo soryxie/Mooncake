@@ -19,6 +19,7 @@
 #include <cassert>
 
 #include "config.h"
+#include "transport/rdma_transport/ib_trace.h"
 #include "transport/rdma_transport/rdma_context.h"
 #include "transport/rdma_transport/rdma_endpoint.h"
 #include "transport/rdma_transport/rdma_transport.h"
@@ -284,6 +285,19 @@ void WorkerPool::performPollCq(int thread_id) {
                 qp_depth_set[slice->rdma.qp_depth]++;
             else
                 qp_depth_set[slice->rdma.qp_depth] = 1;
+
+            uint32_t trace_size = wc[i].byte_len;
+            bool trace_is_send = (wc[i].opcode == IBV_WC_RDMA_WRITE ||
+                                  wc[i].opcode == IBV_WC_RDMA_READ ||
+                                  wc[i].opcode == IBV_WC_SEND);
+            if (trace_is_send || trace_size == 0) trace_size = slice->length;
+            IB_TRACE_COMPLETE(
+                wc[i].wr_id, trace_size,
+                static_cast<uint16_t>(context_.deviceIndex()),
+                static_cast<uint16_t>(wc[i].qp_num),
+                static_cast<uint8_t>(wc[i].opcode),
+                static_cast<uint8_t>(wc[i].status), trace_is_send,
+                static_cast<uint32_t>(slice->target_id));
             // __sync_fetch_and_sub(slice->rdma.qp_depth, 1);
             if (wc[i].status != IBV_WC_SUCCESS) {
                 bool show_work_request_flushed_error = globalConfig().trace;

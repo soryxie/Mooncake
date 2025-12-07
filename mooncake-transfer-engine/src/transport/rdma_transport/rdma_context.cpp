@@ -39,8 +39,10 @@ static int isNullGid(union ibv_gid *gid) {
     return 1;
 }
 
-RdmaContext::RdmaContext(RdmaTransport &engine, const std::string &device_name)
+RdmaContext::RdmaContext(RdmaTransport &engine, const std::string &device_name,
+                         int device_index)
     : device_name_(device_name),
+      device_index_(device_index),
       engine_(engine),
       next_comp_channel_index_(0),
       next_comp_vector_index_(0),

@@ -20,6 +20,7 @@
 #include <cstddef>
 
 #include "config.h"
+#include "transport/rdma_transport/ib_trace.h"
 
 namespace mooncake {
 const static uint8_t MAX_HOP_LIMIT = 16;
@@ -300,6 +301,11 @@ int RdmaEndPoint::submitPostSend(
         slice->ts = getCurrentTimeInNano();
         slice->status = Transport::Slice::POSTED;
         slice->rdma.qp_depth = &wr_depth_list_[qp_index];
+
+        IB_TRACE_POST_SEND(
+            wr.wr_id, sge.length, static_cast<uint16_t>(context_.deviceIndex()),
+            static_cast<uint16_t>(qp_list_[qp_index]->qp_num), wr.opcode,
+            static_cast<uint32_t>(slice->target_id));
     }
     __sync_fetch_and_add(&wr_depth_list_[qp_index], wr_count);
     __sync_fetch_and_add(cq_outstanding_, wr_count);
