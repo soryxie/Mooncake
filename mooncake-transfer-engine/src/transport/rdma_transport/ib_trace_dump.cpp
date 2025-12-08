@@ -16,13 +16,36 @@
 
 #ifdef IB_TRACE_ENABLE
 
+#include <cstdio>
+#include <cstdlib>
+
 namespace mooncake {
 namespace {
 
 constexpr char kIbTraceEnvVar[] = "MC_IB_TRACE_FILE";
 
+void IbTraceLogConfigOnce() {
+    static bool logged = false;
+    if (logged) return;
+    logged = true;
+
+    const char *path = std::getenv(kIbTraceEnvVar);
+    if (path && path[0]) {
+        std::fprintf(stderr,
+                     "MC_IB_TRACE: enabled (IB_TRACE_ENABLE=1). Ring buffer "
+                     "capacity=%llu records. %s=\"%s\"\n",
+                     static_cast<unsigned long long>(kIbTraceCapacity),
+                     kIbTraceEnvVar, path);
+    } else {
+        std::fprintf(stderr,
+                     "MC_IB_TRACE: compiled in (IB_TRACE_ENABLE=1) but %s not "
+                     "set; no trace dump will be written.\n",
+                     kIbTraceEnvVar);
+    }
+}
+
 struct IbTraceAutoDumper {
-    IbTraceAutoDumper() = default;
+    IbTraceAutoDumper() { IbTraceLogConfigOnce(); }
     ~IbTraceAutoDumper() { IbTraceDumpFromEnv(kIbTraceEnvVar); }
 };
 

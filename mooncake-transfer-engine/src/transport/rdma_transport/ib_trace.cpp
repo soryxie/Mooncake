@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cerrno>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -87,14 +88,23 @@ void IbTraceReset() { g_ib_trace_buffer.write_index.store(0); }
 void IbTraceDumpToFile(const char *path) {
     if (!path || !path[0]) return;
 
-    std::FILE *fp = std::fopen(path, "wb");
-    if (!fp) return;
-
     const uint64_t write_index =
         g_ib_trace_buffer.write_index.load(std::memory_order_relaxed);
     const uint64_t count =
         std::min<uint64_t>(write_index, static_cast<uint64_t>(kIbTraceCapacity));
     const uint64_t start = write_index - count;
+    std::fprintf(
+        stderr,
+        "MC_IB_TRACE: dumping %llu records to \"%s\".\n",
+        static_cast<unsigned long long>(count), path);
+
+    std::FILE *fp = std::fopen(path, "wb");
+    if (!fp) {
+        std::fprintf(stderr,
+                     "MC_IB_TRACE: failed to open \"%s\" for writing: %s\n",
+                     path, std::strerror(errno));
+        return;
+    }
 
     IbTraceFileHeader header{};
     std::memcpy(header.magic, "IBTRACE", 7);
@@ -116,6 +126,10 @@ void IbTraceDumpToFile(const char *path) {
     }
 
     std::fclose(fp);
+    std::fprintf(
+        stderr,
+        "MC_IB_TRACE: dump to \"%s\" completed (header + %llu records).\n",
+        path, static_cast<unsigned long long>(count));
 }
 
 void IbTraceDumpFromEnv(const char *env_var) {
