@@ -38,6 +38,13 @@ message(CMAKE_BUILD_TYPE ": ${CMAKE_BUILD_TYPE}")
 # Necessary if you are using Alibaba Cloud eRDMA
 add_definitions(-DCONFIG_ERDMA)
 
+# Enable IB trace logging (set MC_IB_TRACE_FILE env var to dump traces)
+option(ENABLE_IB_TRACE "Enable IB trace logging" OFF)
+if (ENABLE_IB_TRACE)
+  add_compile_definitions(IB_TRACE_ENABLE)
+  message(STATUS "IB trace logging is enabled")
+endif()
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(ENABLE_SCCACHE "Whether to open sccache" OFF)

@@ -16,10 +16,11 @@
 
 #ifdef IB_TRACE_ENABLE
 
+#include <glog/logging.h>
+
 #include <algorithm>
 #include <atomic>
 #include <cerrno>
-#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <time.h>
@@ -93,16 +94,12 @@ void IbTraceDumpToFile(const char *path) {
     const uint64_t count =
         std::min<uint64_t>(write_index, static_cast<uint64_t>(kIbTraceCapacity));
     const uint64_t start = write_index - count;
-    std::fprintf(
-        stderr,
-        "MC_IB_TRACE: dumping %llu records to \"%s\".\n",
-        static_cast<unsigned long long>(count), path);
+    VLOG(1) << "MC_IB_TRACE: dumping " << count << " records to \"" << path << "\".";
 
     std::FILE *fp = std::fopen(path, "wb");
     if (!fp) {
-        std::fprintf(stderr,
-                     "MC_IB_TRACE: failed to open \"%s\" for writing: %s\n",
-                     path, std::strerror(errno));
+        LOG(ERROR) << "MC_IB_TRACE: failed to open \"" << path
+                   << "\" for writing: " << std::strerror(errno);
         return;
     }
 
@@ -126,10 +123,8 @@ void IbTraceDumpToFile(const char *path) {
     }
 
     std::fclose(fp);
-    std::fprintf(
-        stderr,
-        "MC_IB_TRACE: dump to \"%s\" completed (header + %llu records).\n",
-        path, static_cast<unsigned long long>(count));
+    VLOG(1) << "MC_IB_TRACE: dump to \"" << path << "\" completed (header + "
+            << count << " records).";
 }
 
 void IbTraceDumpFromEnv(const char *env_var) {
@@ -138,6 +133,37 @@ void IbTraceDumpFromEnv(const char *env_var) {
     if (!path || !path[0]) return;
     IbTraceDumpToFile(path);
 }
+
+namespace {
+
+constexpr char kIbTraceEnvVar[] = "MC_IB_TRACE_FILE";
+
+void IbTraceLogConfigOnce() {
+    static bool logged = false;
+    if (logged) return;
+    logged = true;
+
+    const char *path = std::getenv(kIbTraceEnvVar);
+    if (path && path[0]) {
+        VLOG(1) << "MC_IB_TRACE: enabled (IB_TRACE_ENABLE=1). Ring buffer "
+                   "capacity=" << kIbTraceCapacity << " records. "
+                << kIbTraceEnvVar << "=\"" << path << "\"";
+    } else {
+        VLOG(1) << "MC_IB_TRACE: compiled in (IB_TRACE_ENABLE=1) but "
+                << kIbTraceEnvVar << " not set; no trace dump will be written.";
+    }
+}
+
+struct IbTraceAutoDumper {
+    IbTraceAutoDumper() { IbTraceLogConfigOnce(); }
+    ~IbTraceAutoDumper() { IbTraceDumpFromEnv(kIbTraceEnvVar); }
+};
+
+// Dump traces (if requested) when the process exits or the shared
+// object unloads.
+const IbTraceAutoDumper kIbTraceAutoDumper{};
+
+}  // namespace
 
 }  // namespace mooncake
 
